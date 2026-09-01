@@ -12,8 +12,10 @@
  *   net.onState    = (p) => {};     // {id,name,color,x,y,z,facing,vy,onGround}
  *   net.onLeave    = (id) => {};
  *   net.onFull     = (max) => {};
+ *   net.onChat     = (m) => {};     // {id,name,color,text,ts}
  *   net.connect(name);
  *   net.sendState(state);           // se llama desde el bucle de juego
+ *   net.sendChat(text);             // envía un mensaje de chat al servidor
  */
 class NetClient {
   constructor() {
@@ -28,6 +30,7 @@ class NetClient {
     this.onState = null;
     this.onLeave = null;
     this.onFull = null;
+    this.onChat = null;
     this.onClose = null;
   }
 
@@ -63,6 +66,9 @@ class NetClient {
         case 'full':
           if (this.onFull) this.onFull(msg.max);
           break;
+        case 'chat':
+          if (this.onChat) this.onChat(msg);
+          break;
       }
     };
 
@@ -82,6 +88,16 @@ class NetClient {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'state', ...state }));
       }
+    }
+  }
+
+  // Envía un mensaje de chat al servidor (lo recorta y descarta si está vacío)
+  sendChat(text) {
+    if (!this._connected) return;
+    const t = String(text || '').trim().slice(0, 200);
+    if (!t) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'chat', text: t }));
     }
   }
 

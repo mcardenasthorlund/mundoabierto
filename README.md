@@ -18,13 +18,18 @@ npm start
 ```
 
 Abrir varias pestañas en `http://localhost:8080`, poner un nombre y entrar.
-Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores.
+Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores,
+chatear entre vosotros y ver el indicador de versión (v0.1-alpha) en la esquina
+inferior derecha.
 
 ## Controles
 
 - **Flechas / joystick táctil:** moverse.
 - **Ratón:** dirección de mirada.
 - **Espacio / clic / toque:** saltar.
+- **Chat:** botón en la esquina superior centrada abre/cierra la ventana; escribe
+  y pulsa Enviar/Enter. Al llegar un mensaje con el chat cerrado aparece un badge
+  con el número de no leídos y el botón parpadea brevemente.
 
 ## Desplegar con Docker (Traefik)
 
@@ -59,6 +64,7 @@ Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores
 │   ├── World.js        # Terreno + obstáculos (desde layout o aleatorio)
 │   ├── Player.js       # Jugador local (movimiento, salto, sombra)
 │   ├── RemotePlayer.js # Otros jugadores (interpolados + nombre)
+│   ├── ChatUI.js       # Chat entre jugadores (ventana, badge de no leídos)
 │   ├── Game.js         # Bucle de juego e integración de red
 │   └── main.js         # Pantalla de inicio y arranque
 └── server/             # Servidor Node + WebSocket
@@ -69,7 +75,7 @@ Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores
 
 ## Protocolo
 
-- **Cliente → Servidor:** `{type:'join', name}` · `{type:'state', x,y,z,facing,vy,onGround}` (~30 Hz).
-- **Servidor → Cliente:** `{type:'welcome', id, color, layout, players}` · `{type:'state', id, …}` · `{type:'leave', id}` · `{type:'full'}`.
+- **Cliente → Servidor:** `{type:'join', name}` · `{type:'state', x,y,z,facing,vy,onGround}` (~30 Hz) · `{type:'chat', text}`.
+- **Servidor → Cliente:** `{type:'welcome', id, color, layout, players}` · `{type:'state', id, …}` · `{type:'leave', id}` · `{type:'full'}` · `{type:'chat', id, name, color, text, ts}`.
 
 Límite de sesiones simultáneas: `MAX_PLAYERS` (por defecto 4).

@@ -45,8 +45,10 @@ MundoAbierto/
 ├── docker-compose.yml     # Traefik, imagen ghcr.io, puerto 8080, red traefik-proxy
 ├── .dockerignore
 ├── index.html             # Canvas + pantalla de inicio (nombre) + HUD + overlay táctil
+│                          #   + chat (botón/panel) + indicador de versión
 ├── css/
-│   └── style.css          # Estilos responsive, overlay de inicio, HUD, joystick, #error
+│   └── style.css          # Estilos responsive, overlay de inicio, HUD, joystick,
+│                          #   chat, indicador de versión, #error
 ├── js/
 │   ├── Math3D.js          # Matrices 4x4 (col-major) y vectores
 │   ├── Shader.js          # Compilación de shaders GLSL y programas
@@ -54,18 +56,20 @@ MundoAbierto/
 │   │                      #   (createCircleTexture, createTextTexture)
 │   ├── InputManager.js    # Teclado + ratón + táctil (joystick y salto por toque)
 │   ├── Camera.js          # Cámara detrás del jugador + raycast ratón->suelo
-│   ├── NetClient.js       # WebSocket: envía estado ~30 Hz, callbacks (NUEVO)
+│   ├── NetClient.js       # WebSocket: envía estado ~30 Hz + chat, callbacks (NUEVO)
 │   ├── Obstacle.js        # Clase base colisionable
 │   ├── Tree.js            # Árbol: tronco cilíndrico + copa cónica
 │   ├── Mountain.js        # Montaña cónica + casquete de nieve
 │   ├── World.js           # buildFromLayout(layout) o generación aleatoria; colisiones
 │   ├── Player.js          # Movimiento, mirada, salto, sombra, nombre; getState()
 │   ├── RemotePlayer.js    # Otros jugadores: billboard + nombre, interpolados (NUEVO)
+│   ├── ChatUI.js          # Chat entre jugadores: ventana plegable, badge no leídos
+│   │                      #   y parpadeo del botón (NUEVO)
 │   ├── Game.js            # Bucle (paso fijo 1/60), resize, red, remotes, joystick
-│   └── main.js            # Pantalla de inicio, conexión, arranque del juego
+│   └── main.js            # Pantalla de inicio, conexión, arranque del juego, ChatUI
 └── server/
     ├── package.json       # Dep única: ws; script start
-    ├── server.js          # HTTP estático + WebSocket + sesiones + layout
+    ├── server.js          # HTTP estático + WebSocket + sesiones + layout + chat
     └── worldLayout.js     # generateLayout(half, seed): layout determinista
 ```
 
@@ -96,6 +100,17 @@ MundoAbierto/
 - [x] Despliegue: `Dockerfile`, `docker-compose.yml` (Traefik), `.dockerignore`, `README.md`.
 - [x] Verificaciones: `node --check` de todos los JS y test del protocolo
       (joins, broadcast, layout idéntico, "full", leave).
+- [x] **Chat entre jugadores activos (en vivo, sin historial):**
+      - Botón + ventana de chat en la esquina **superior centrada** (panel justo
+        debajo del botón); lista de mensajes con nombre coloreado y campo de escritura.
+      - Broadcast del servidor a todos con `{type:'chat', id, name, color, text, ts}`;
+        cada cliente muestra su propio mensaje por coincidencia de `id`.
+      - Badge con contador de **no leídos** + parpadeo breve del botón cuando llega
+        un mensaje ajeno con el chat cerrado.
+      - Validación en servidor: texto recortado, máx. 200 caracteres, vacíos descartados.
+      - Escribir en el chat **no mueve al personaje** (InputManager ignora el teclado
+        cuando hay un `INPUT`/`TEXTAREA` con foco).
+- [x] **Indicador de versión** `v0.1-alpha` en la esquina inferior derecha.
 
 ## Detalles técnicos clave (para retomar rápido)
 
@@ -107,11 +122,18 @@ MundoAbierto/
   `createTextTexture(text)` genera la etiqueta de nombre (canvas 2D -> WebGL).
 - **Red (servidor):** `server/server.js` sirve estáticos desde `__dirname/..` y
   WebSocket en el mismo puerto. Mensajes:
-  - C→S: `{type:'join', name}` · `{type:'state', x,y,z,facing,vy,onGround}` (~30 Hz).
+  - C→S: `{type:'join', name}` · `{type:'state', x,y,z,facing,vy,onGround}` (~30 Hz)
+    · `{type:'chat', text}`.
   - S→C: `{type:'welcome', id, color, layout, players}` · `{type:'state', id, …}`
-    · `{type:'leave', id}` · `{type:'full'}`.
+    · `{type:'leave', id}` · `{type:'full'}` · `{type:'chat', id, name, color, text, ts}`.
   - **Cuidado:** `send()` ya hace `JSON.stringify`, así que los broadcasts deben
     pasar el **objeto**, no un string pre-serializado (evitar doble codificación).
+- **Chat:** el servidor valida (`String(msg.text||'').trim().slice(0,200)`), descarta
+  vacíos y hace broadcast a todos (incluye al emisor, que decide cómo mostrarlo por
+  `id === net.id`). `NetClient.sendChat(text)` y callback `onChat`.
+- **ChatUI:** clase de UI pura desacoplada del bucle; se instancia en `main.js`
+  (`new ChatUI(net)`). `InputManager._onKeyDown/_onKeyUp` ignoran el input de juego
+  cuando `document.activeElement` es un `INPUT`/`TEXTAREA` (evita mover/saltar al escribir).
 - **NetClient:** envía el estado propio en `update(dt, state)` con cadencia
   interna 1/30 s. `welcome` activa el juego (crea `Game` con `layout` + `players`).
 - **Mundo:** `World` se construye con `{layout}`; sin layout usa `_spawn` aleatorio
@@ -134,7 +156,9 @@ cd server && npm install && npm start
 ```
 Abrir `http://localhost:8080` en varias pestañas/ventanas: entrar con nombre,
 comprobar movimiento, salto, colisiones, cámara, que los jugadores se ven
-mutuamente con nombre y que una 5ª conexión recibe "servidor lleno".
+mutuamente con nombre y que una 5ª conexión recibe "servidor lleno". Probar el
+chat (botón arriba centrado): enviar mensajes entre pestañas, ver el badge de no
+leídos y el parpadeo con el chat cerrado, y confirmar que escribir no mueve al personaje.
 
 ### En el servidor (Docker + Traefik)
 1. `docker build -t ghcr.io/mcardenasthorlund/mundoabierto:latest .`
@@ -149,5 +173,6 @@ mutuamente con nombre y que una 5ª conexión recibe "servidor lleno".
 - Cámara con colisión (no atravesar montañas) o rotación manual opcional.
 - Obstáculos con hitbox fiel (no círculo) o colisión del salto sobre montañas.
 - Migrar de polling/broadcast simple a interpolación/extrapolación o WebRTC.
-- Auth/unicidad de nombres, salas múltiples, chat, minimapa o mundo infinito.
+- Auth/unicidad de nombres, salas múltiples, historial persistente de chat (los que
+  entran después ven los mensajes previos), minimapa o mundo infinito.
 - Estados del jugador (animaciones, correr), enemigos o NPCs.

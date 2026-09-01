@@ -140,6 +140,19 @@ html, body {
   opacity: 0.9;
 }
 
+/* Indicador de versión (inferior derecha) */
+#version {
+  position: fixed;
+  right: 12px;
+  bottom: 10px;
+  z-index: 10;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Mensaje de error (si WebGL no está disponible) — solo se muestra con texto */
 #error {
   display: none;
@@ -197,4 +210,176 @@ html, body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.55);
   will-change: transform;
+}
+
+/* --- Chat entre jugadores (esquina inferior derecha) --- */
+#chat-toggle {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
+#chat-toggle:hover {
+  background: rgba(20, 20, 20, 0.8);
+}
+
+/* Parpadeo del botón cuando hay mensajes sin leer */
+#chat-toggle.chat-blink {
+  animation: chat-blink 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes chat-blink {
+  from { background: rgba(0, 0, 0, 0.6); }
+  to   { background: rgba(240, 120, 40, 0.9); }
+}
+
+/* Contador de mensajes no leídos */
+#chat-badge {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+#chat-badge.show {
+  display: block;
+}
+
+/* Panel de chat */
+#chat-panel {
+  display: none;
+  position: fixed;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 41;
+  width: min(320px, 92vw);
+  height: 320px;
+  flex-direction: column;
+  background: rgba(15, 20, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+#chat-panel.open {
+  display: flex;
+}
+
+#chat-title {
+  padding: 10px 14px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-msg {
+  font-size: 13px;
+  line-height: 1.35;
+  color: #e8e8e8;
+  word-break: break-word;
+}
+
+.chat-sender {
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.chat-own {
+  align-self: flex-end;
+  text-align: right;
+}
+
+.chat-own .chat-sender {
+  opacity: 0.8;
+}
+
+#chat-compose {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#chat-input {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  outline: none;
+  min-width: 0;
+}
+
+#chat-input:focus {
+  border-color: #fff;
+}
+
+#chat-send {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #2f9e5f;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#chat-send:hover {
+  background: #35b46d;
+}
+
+/* En pantallas táctiles el chat queda por encima del joystick */
+@media (max-width: 640px) {
+  #chat-panel {
+    top: 74px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    height: 40vh;
+  }
 }

@@ -41,6 +41,11 @@ class InputManager {
   }
 
   _onKeyDown(e) {
+    // Si se está escribiendo (p. ej. en el chat), el teclado no controla el juego
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+      return;
+    }
     if (e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
         e.code === 'ArrowLeft' || e.code === 'ArrowRight' ||
         e.code === 'Space') {
@@ -53,6 +58,11 @@ class InputManager {
   }
 
   _onKeyUp(e) {
+    // No afecta al juego mientras se escribe en el chat
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+      return;
+    }
     this.keys.delete(e.code);
   }
 

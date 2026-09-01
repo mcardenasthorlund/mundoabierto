@@ -33,6 +33,23 @@
     </div>
   </div>
 
+  <!-- Chat entre jugadores: botón flotante + panel (esquina inferior derecha) -->
+  <button id="chat-toggle" type="button" aria-label="Abrir chat">
+    <span id="chat-icon">&#128172;</span>
+    <span id="chat-badge"></span>
+  </button>
+  <div id="chat-panel">
+    <div id="chat-title">Chat</div>
+    <div id="chat-messages"></div>
+    <div id="chat-compose">
+      <input id="chat-input" type="text" maxlength="200" placeholder="Escribe un mensaje…" autocomplete="off">
+      <button id="chat-send" type="button">Enviar</button>
+    </div>
+  </div>
+
+  <!-- Versión del juego -->
+  <div id="version">v0.1-alpha</div>
+
   <div id="error"></div>
 
   <!-- Scripts en orden de dependencia (sin ES modules para funcionar desde file://) -->
@@ -48,6 +65,7 @@
   <script src="js/World.js"></script>
   <script src="js/Player.js"></script>
   <script src="js/RemotePlayer.js"></script>
+  <script src="js/ChatUI.js"></script>
   <script src="js/Game.js"></script>
   <script src="js/main.js"></script>
 </body>

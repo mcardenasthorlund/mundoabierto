@@ -174,6 +174,15 @@ wss.on('connection', (ws) => {
       p.lastSeen = Date.now();
       broadcastState(p);
     }
+    if (msg.type === 'chat' && playerId !== null) {
+      const p = players.get(playerId);
+      if (!p) return;
+      const text = String(msg.text || '').trim().slice(0, 200);
+      if (!text) return;
+      // Broadcast a todos (incluye al emisor, que muestra su propio mensaje)
+      const data = { type: 'chat', id: playerId, name: p.name, color: p.color, text, ts: Date.now() };
+      for (const other of players.values()) send(other.ws, data);
+    }
   });
 
   ws.on('close', () => {

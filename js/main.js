@@ -28,6 +28,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     net = new NetClient();
 
+    // Inicializa el chat entre jugadores
+    new ChatUI(net);
+
     net.onWelcome = (data) => {
       // El juego empieza al recibir el layout y los datos de la sesión
       overlay.classList.add('hidden');
