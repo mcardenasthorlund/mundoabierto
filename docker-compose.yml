@@ -1,0 +1,25 @@
+# docker-compose.yml para desplegar con Traefik (red externa "traefik-proxy").
+# Referencia la imagen publicada en ghcr.io; el panel de docker solo la despliega.
+services:
+  game:
+    image: ghcr.io/mcardenasthorlund/mundoabierto:latest
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - MAX_PLAYERS=4
+    expose:
+      - "8080"
+    networks:
+      - traefik-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.mundoabierto-router.rule=Host(`mundoabierto.misappsfantasticas.cloud`)"
+      - "traefik.http.routers.mundoabierto-router.entrypoints=websecure"
+      - "traefik.http.routers.mundoabierto-router.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mundoabierto-router.service=mundoabierto-serv"
+      - "traefik.http.services.mundoabierto-serv.loadbalancer.server.port=8080"
+
+networks:
+  traefik-proxy:
+    external: true

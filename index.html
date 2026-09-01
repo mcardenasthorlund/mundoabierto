@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mundo Abierto 3D</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Pantalla de inicio: pide el nombre antes de conectar -->
+  <div id="start-screen">
+    <div class="panel">
+      <h1>Mundo Abierto 3D</h1>
+      <p>Multijugador: comparte el mundo con otros jugadores.</p>
+      <label for="name-input">Tu nombre</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="Jugador" autocomplete="off">
+      <button id="start-btn">Entrar</button>
+      <div id="status-msg"></div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <h1>Mundo Abierto 3D</h1>
+    <p>Flechas/joystick: moverse &middot; Rat&oacute;n: direcci&oacute;n &middot; Espacio/clic/toque: saltar</p>
+  </div>
+
+  <!-- Joystick táctil para móviles (se muestra al detectar un toque) -->
+  <div id="touch-ui">
+    <div id="joystick">
+      <div id="joystick-knob"></div>
+    </div>
+  </div>
+
+  <div id="error"></div>
+
+  <!-- Scripts en orden de dependencia (sin ES modules para funcionar desde file://) -->
+  <script src="js/Math3D.js"></script>
+  <script src="js/Shader.js"></script>
+  <script src="js/Renderer.js"></script>
+  <script src="js/InputManager.js"></script>
+  <script src="js/Camera.js"></script>
+  <script src="js/NetClient.js"></script>
+  <script src="js/Obstacle.js"></script>
+  <script src="js/Tree.js"></script>
+  <script src="js/Mountain.js"></script>
+  <script src="js/World.js"></script>
+  <script src="js/Player.js"></script>
+  <script src="js/RemotePlayer.js"></script>
+  <script src="js/Game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
