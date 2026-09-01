@@ -8,8 +8,12 @@ COPY server/package*.json ./server/
 RUN npm install --prefix server
 
 # Código del servidor y archivos estáticos
+# Nota: COPY con varios directorios aplana su contenido en el destino,
+# por eso se copia cada carpeta preservando su estructura (js/, css/).
 COPY server ./server
-COPY index.html css js ./
+COPY index.html ./
+COPY css ./css
+COPY js ./js
 
 ENV PORT=8080
 ENV MAX_PLAYERS=4

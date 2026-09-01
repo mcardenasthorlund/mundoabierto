@@ -28,9 +28,12 @@ Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores
 
 ## Desplegar con Docker (Traefik)
 
-1. Publicar la imagen en GitHub Container Registry (repositorio público):
+1. Publicar la imagen en GitHub Container Registry (repositorio público), si estamos en tecnología ARM, hay que descargar la imagen de node de linux/amd64 por compatibilidad y hacer el build sobre ella:
 
    ```bash
+   docker pull --platform linux/amd64 node:20-alpine
+   docker buildx build --platform linux/amd64 -t ghcr.io/mcardenasthorlund/mundoabierto:latest --push .
+
    docker build -t ghcr.io/mcardenasthorlund/mundoabierto:latest .
    docker push ghcr.io/mcardenasthorlund/mundoabierto:latest
    ```
