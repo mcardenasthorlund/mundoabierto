@@ -2,7 +2,8 @@
 
 /**
  * Humanoid.js
- * Figura humana simple (antropomórfica) construida con cajas 3D de color plano,
+ * Figura humana simple (antropomórfica) construida con cajas 3D de color plano
+ * y proporciones tipo Minecraft (cabeza grande y cúbica, cuerpo macizo),
  * que sustituye a los billboards circulares de jugadores y NPCs.
  *
  * Compone el cuerpo con torso, cabeza, dos piernas y dos brazos. El modelo se
@@ -15,6 +16,11 @@
  *   figure.update(dt, moving);
  *   figure.render(renderer, viewProj, x, y, z, facingAngle);
  */
+
+// Altura total de la figura (cadera + torso + cabeza). La usan Character y las
+// subclases para colocar la etiqueta de nombre por encima de la cabeza.
+const HUMAN_HEIGHT = 2.9;
+
 class Humanoid {
   /**
    * @param {Renderer} renderer Motor de renderizado.
@@ -26,16 +32,16 @@ class Humanoid {
     const limb = colors.limb || body;
     const head = colors.head || [0.9, 0.72, 0.55];
 
-    // Proporciones aproximadas de un cuerpo humano (altura total ~1.9 u)
-    this.legLen = 0.8;      // largo de la pierna (desde la cadera)
-    this.legW = 0.2;        // grosor de la pierna
-    this.torsoH = 0.62;     // alto del torso
-    this.torsoW = 0.5;      // ancho del torso
-    this.torsoD = 0.28;     // profundidad del torso
-    this.armLen = 0.58;     // largo del brazo (desde el hombro)
-    this.armW = 0.17;       // grosor del brazo
-    this.headSize = 0.32;   // tamaño de la cabeza
-    this.shoulderY = 1.34;  // altura de los hombros (articulación de los brazos)
+    // Proporciones tipo Minecraft (cabeza grande y cúbica). Altura total ~2.9 u.
+    this.legLen = 1.0;      // largo de la pierna (desde la cadera)
+    this.legW = 0.5;        // grosor de la pierna
+    this.torsoH = 0.8;      // alto del torso
+    this.torsoW = 1.0;      // ancho del torso
+    this.torsoD = 0.55;     // profundidad del torso
+    this.armLen = 1.0;      // largo del brazo (desde el hombro)
+    this.armW = 0.45;       // grosor del brazo
+    this.headSize = 1.1;    // tamaño de la cabeza (cubo grande)
+    this.shoulderY = 1.65;  // altura de los hombros (articulación de los brazos)
 
     // Mallas construidas con la articulación (cadera/hombro) en el origen y
     // colgando hacia abajo (baseY = -len), para que roten en el pivote.
@@ -50,8 +56,11 @@ class Humanoid {
     this._phase = 0;           // fase de la animación de caminado
     this._walk = 0;            // amplitud suavizada (0 parado, 1 caminando)
 
-    this._m = M3D.identity(new Float32Array(16));
-    this._id = M3D.identity(new Float32Array(16));
+    // Matrices scratch reutilizadas en cada frame (los drawMesh las consumen
+    // de forma síncrona, así que se pueden reusar entre partes).
+    this._root = M3D.identity(new Float32Array(16)); // raíz del cuerpo
+    this._part = M3D.identity(new Float32Array(16)); // torso/cabeza
+    this._limb = M3D.identity(new Float32Array(16)); // extremidades
   }
 
   // Avanza la animación: moving aumenta la fase; _walk se mezcla hacia 0/1
@@ -78,14 +87,13 @@ class Humanoid {
 
     const hipY = y + this.hipY;
     const shoulderY = y + this.shoulderY;
-    const headY = y + this.hipY + this.torsoH + this.headSize * 0.55;
     const side = this.torsoW * 0.5 + this.armW * 0.35;
 
     // Matriz raíz: posición del personaje + orientación según la mirada.
     // rotateY(angle) hace que el frente del modelo (+Z) apunte hacia facing.
-    M3D.identity(this._id);
-    M3D.translate(this._m, this._id, x, y, z);
-    M3D.rotateY(this._m, this._m, angle);
+    M3D.identity(this._part);
+    M3D.translate(this._root, this._part, x, y, z);
+    M3D.rotateY(this._root, this._root, angle);
 
     // Torso (asentado sobre la cadera)
     renderer.drawMesh(this.torso, viewProj, this._translateLocal(0, this.hipY, 0));
@@ -104,15 +112,15 @@ class Humanoid {
 
   // Matriz para una parte centrada en un desplazamiento local del cuerpo
   _translateLocal(dx, dy, dz) {
-    return M3D.translate(this._id, this._m, dx, dy, dz);
+    return M3D.translate(this._part, this._root, dx, dy, dz);
   }
 
   // Matriz para una extremidad: desplazada al pivote (dx, dy, dz) y girada en X
   _limbLocal(dx, dy, dz, rotX) {
-    const m = M3D.identity(new Float32Array(16));
-    M3D.translate(m, m, dx, dy, dz);
-    M3D.rotateX(m, m, rotX);
+    M3D.identity(this._limb);
+    M3D.translate(this._limb, this._limb, dx, dy, dz);
+    M3D.rotateX(this._limb, this._limb, rotX);
     // Compone con la matriz raíz del cuerpo
-    return M3D.multiply(m, this._m, m);
+    return M3D.multiply(this._limb, this._root, this._limb);
   }
 }

@@ -23,8 +23,9 @@ const COLOR_FS = `
 precision mediump float;
 varying vec3 vColor;
 uniform float uAlpha;
+uniform float uBrightness;
 void main(void) {
-  gl_FragColor = vec4(vColor, uAlpha);
+  gl_FragColor = vec4(vColor * uBrightness, uAlpha);
 }
 `;
 
@@ -49,10 +50,11 @@ precision mediump float;
 varying vec2 vUv;
 uniform sampler2D uTexture;
 uniform vec4 uColor;
+uniform float uBrightness;
 void main(void) {
   vec4 tex = texture2D(uTexture, vUv);
   if (tex.a < 0.05) discard;
-  gl_FragColor = vec4(tex.rgb * uColor.rgb, tex.a * uColor.a);
+  gl_FragColor = vec4(tex.rgb * uColor.rgb * uBrightness, tex.a * uColor.a);
 }
 `;
 
@@ -231,11 +233,13 @@ class Renderer {
       throw new Error('WebGL no está soportado en este navegador.');
     }
     const gl = this.gl;
-    gl.clearColor(0.58, 0.78, 0.88, 1);
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    this.lighting = new Lighting();
+    this._time = 0;
 
     this.colorProgram = Shader.create(gl, COLOR_VS, COLOR_FS);
     this.spriteProgram = Shader.create(gl, SPRITE_VS, SPRITE_FS);
@@ -245,6 +249,7 @@ class Renderer {
       aColor: gl.getAttribLocation(this.colorProgram, 'aColor'),
       uMVP: gl.getUniformLocation(this.colorProgram, 'uMVP'),
       uAlpha: gl.getUniformLocation(this.colorProgram, 'uAlpha'),
+      uBrightness: gl.getUniformLocation(this.colorProgram, 'uBrightness'),
     };
     this.spriteLoc = {
       aOffset: gl.getAttribLocation(this.spriteProgram, 'aOffset'),
@@ -256,6 +261,7 @@ class Renderer {
       uSize: gl.getUniformLocation(this.spriteProgram, 'uSize'),
       uColor: gl.getUniformLocation(this.spriteProgram, 'uColor'),
       uTexture: gl.getUniformLocation(this.spriteProgram, 'uTexture'),
+      uBrightness: gl.getUniformLocation(this.spriteProgram, 'uBrightness'),
     };
 
     this.spriteQuad = this.createMesh(SPRITE_QUAD);
@@ -267,8 +273,18 @@ class Renderer {
     this.gl.viewport(0, 0, width, height);
   }
 
+  // Avanza el sistema de iluminación (transición día/noche) y el reloj interno
+  updateLighting(dt) {
+    this.lighting.update(dt);
+    this._time += dt;
+  }
+
+  // Limpia la pantalla con el color de cielo actual (día o noche)
   clear() {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    const sky = this.lighting.sky;
+    const gl = this.gl;
+    gl.clearColor(sky[0], sky[1], sky[2], 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   }
 
   createMesh(meshData) {
@@ -295,6 +311,7 @@ class Renderer {
     M3D.multiply(this._scratch, viewProj, model);
     gl.uniformMatrix4fv(this.colorLoc.uMVP, false, this._scratch);
     gl.uniform1f(this.colorLoc.uAlpha, alpha);
+    gl.uniform1f(this.colorLoc.uBrightness, this.lighting.brightness);
     gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
   }
 
@@ -314,10 +331,92 @@ class Renderer {
     gl.uniform3fv(this.spriteLoc.uUp, up);
     gl.uniform2fv(this.spriteLoc.uSize, size);
     gl.uniform4fv(this.spriteLoc.uColor, color);
+    gl.uniform1f(this.spriteLoc.uBrightness, this.lighting.brightness);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(this.spriteLoc.uTexture, 0);
     gl.drawElements(gl.TRIANGLES, this.spriteQuad.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // Genera una textura de estrella (punto brillante con halo) usando Canvas 2D
+  createStarTexture(size) {
+    const gl = this.gl;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const c = size / 2;
+    const grad = ctx.createRadialGradient(c, c, 0, c, c, c);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return tex;
+  }
+
+  // Genera la textura del sol: disco brillante (blanco-amarillo) con halo
+  createSunTexture(size) {
+    const gl = this.gl;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const c = size / 2;
+    const halo = ctx.createRadialGradient(c, c, c * 0.55, c, c, c);
+    halo.addColorStop(0, 'rgba(255,240,160,0.5)');
+    halo.addColorStop(1, 'rgba(255,240,160,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, size, size);
+    const disc = ctx.createRadialGradient(c, c, 0, c, c, c * 0.5);
+    disc.addColorStop(0, 'rgba(255,255,245,1)');
+    disc.addColorStop(0.7, 'rgba(255,235,170,1)');
+    disc.addColorStop(1, 'rgba(255,220,130,0)');
+    ctx.fillStyle = disc;
+    ctx.beginPath();
+    ctx.arc(c, c, c * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return tex;
+  }
+
+  // Genera la textura de la luna: disco pálido con borde suave
+  createMoonTexture(size) {
+    const gl = this.gl;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const c = size / 2;
+    const grad = ctx.createRadialGradient(c, c, c * 0.6, c, c, c);
+    grad.addColorStop(0, 'rgba(240,244,255,1)');
+    grad.addColorStop(0.75, 'rgba(225,232,250,1)');
+    grad.addColorStop(1, 'rgba(210,220,245,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(c, c, c * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return tex;
   }
 
   // Genera una textura circular con gradiente usando Canvas 2D

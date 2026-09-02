@@ -33,10 +33,10 @@ class Camera {
   update(player, dt) {
     // Dirección opuesta a la mirada del jugador: la cámara va siempre detrás
     let bx = 0, bz = -1;
-    const flen = Math.hypot(player.facing[0], player.facing[2]);
+    const flen = Math.hypot(player.facing[0], player.facing[1]);
     if (flen > 1e-4) {
       bx = -player.facing[0] / flen;
-      bz = -player.facing[2] / flen;
+      bz = -player.facing[1] / flen;
     }
 
     const desiredEye = [
@@ -52,7 +52,7 @@ class Camera {
     this.eye[2] += (desiredEye[2] - this.eye[2]) * k;
 
     this.target[0] = player.x;
-    this.target[1] = player.y + 1.2;
+    this.target[1] = player.y + 1.5;
     this.target[2] = player.z;
 
     // Base ortonormal de la cámara (se usa para billboards y movimiento relativo)

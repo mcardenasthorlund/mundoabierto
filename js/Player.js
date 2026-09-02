@@ -6,34 +6,25 @@
  * dirección de mirada determinada por el ratón y salto con gravedad.
  */
 const PLAYER_COLOR = [0.2, 0.5, 0.95];
-const SHADOW_COLOR = [0, 0.12, 0.04];
 
-class Player {
+class Player extends Character {
   constructor(x, z, renderer, opts) {
     opts = opts || {};
-    this.x = x;
-    this.y = 0;
-    this.z = z;
+    super(renderer, {
+      name: opts.name || 'Yo',
+      color: opts.color || PLAYER_COLOR,
+      x, z,
+      radius: 0.6,
+    });
+
     this.vy = 0;
-    this.radius = 0.5;
-    this.height = 1.9;
     this.speed = 8;
     this.jumpSpeed = 9.5;
     this.gravity = -24;
     this.onGround = true;
 
-    this.name = opts.name || 'Yo';
-    this.color = opts.color || PLAYER_COLOR;
-    this.facing = [0, 0, -1];
     this._turnTarget = null; // ángulo de mirada objetivo (ratón), en radianes
     this._mx = 0; this._my = 0; this._vw = 1; this._vh = 1;
-
-    this.nameTexture = renderer.createTextTexture(this.name);
-    this.shadowMesh = renderer.createMesh(buildUnitQuadXZ(SHADOW_COLOR));
-
-    // Figura humana (torso/piernas/brazos en el color de sesión, cabeza piel)
-    this.humanoid = new Humanoid(renderer, { body: this.color, limb: this.color });
-    this._moving = false;
   }
 
   // Estado comprimido para enviar al servidor
@@ -42,7 +33,7 @@ class Player {
       x: this.x,
       y: this.y,
       z: this.z,
-      facing: [this.facing[0], this.facing[2]],
+      facing: [this.facing[0], this.facing[1]],
       vy: this.vy,
       onGround: this.onGround,
     };
@@ -80,7 +71,6 @@ class Player {
     if (Math.abs(mx) < 0.15) mx = 0;
     if (Math.abs(my) < 0.15) my = 0;
     const moving = mx !== 0 || my !== 0;
-    this._moving = moving;
     this.humanoid.update(dt, moving);
 
     const f = camera.forward;
@@ -108,7 +98,7 @@ class Player {
       const fdz = r[2] * mx + f[2] * my;
       const flen = Math.hypot(fdx, fdz) || 1;
       this.facing[0] = fdx / flen;
-      this.facing[2] = fdz / flen;
+      this.facing[1] = fdz / flen;
     }
 
     // --- Movimiento ---
@@ -138,7 +128,7 @@ class Player {
   // dirección (p. ej. ratón cerca del jugador) se convierten en giros controlados.
   _smoothTurn(dt) {
     if (this._turnTarget === null) return;
-    let ang = Math.atan2(this.facing[0], this.facing[2]);
+    let ang = Math.atan2(this.facing[0], this.facing[1]);
     let diff = this._turnTarget - ang;
     // Normaliza la diferencia al rango [-PI, PI] para girar por el camino corto
     while (diff > Math.PI) diff -= 2 * Math.PI;
@@ -146,31 +136,6 @@ class Player {
     const k = 1 - Math.exp(-dt * 12);
     ang += diff * k;
     this.facing[0] = Math.sin(ang);
-    this.facing[2] = Math.cos(ang);
-  }
-
-  render(renderer, viewProj, camera) {
-    // Sombra proyectada sobre el suelo
-    const model = M3D.identity(new Float32Array(16));
-    M3D.translate(model, model, this.x, 0.02, this.z);
-    M3D.scale(model, model, this.radius * 1.4, 1, this.radius * 1.4);
-    renderer.drawMesh(this.shadowMesh, viewProj, model, 0.35);
-
-    // Figura humana orientada según la mirada, animada al moverse
-    const facingAngle = Math.atan2(this.facing[0], this.facing[2]);
-    this.humanoid.render(renderer, viewProj, this.x, this.y, this.z, facingAngle);
-
-    // Etiqueta con el nombre sobre la cabeza
-    const nameCenter = [this.x, this.y + this.height + 0.45, this.z];
-    const nameW = 0.5 + this.name.length * 0.32;
-    renderer.drawSprite(
-      viewProj,
-      nameCenter,
-      [nameW, 0.85],
-      [1, 1, 1, 1],
-      this.nameTexture,
-      camera.getRight(),
-      camera.getUp()
-    );
+    this.facing[1] = Math.cos(ang);
   }
 }

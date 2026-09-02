@@ -2,38 +2,34 @@
 
 /**
  * NPC.js
- * Personaje no jugador: un billboard circular estático con una etiqueta de
- * nombre sobre la cabeza y una sombra en el suelo. Los NPCs no se mueven, pero
- * sí son colisionables (impiden que el jugador los atraviese) y pueden
+ * Personaje no jugador: una figura humana dorada estática con un leve balanceo
+ * mientras espera, su sombra y su etiqueta de nombre. Los NPCs no se mueven,
+ * pero sí son colisionables (impiden que el jugador los atraviese) y pueden
  * interactuar con el jugador cuando este se acerca.
  *
  * Uso:
  *   const npc = new NPC(renderer, { id, x, z, name, color });
+ *   npc.update(dt);
  *   npc.render(renderer, viewProj, camera);
  */
 const NPC_COLOR = [0.95, 0.8, 0.2]; // dorado, distingue a los NPCs de los jugadores
 
-class NPC {
+class NPC extends Character {
   /**
    * @param {Renderer} renderer Motor de renderizado.
    * @param {object} data Datos del NPC: { id, x, z, name, color }.
    */
   constructor(renderer, data) {
+    super(renderer, {
+      name: data.name || ('NPC_' + data.id),
+      color: data.color || NPC_COLOR,
+      x: data.x || 0,
+      z: data.z || 0,
+      radius: 0.6, // radio de colisión (cuerpo del NPC)
+    });
+
     this.id = data.id;
-    this.name = data.name || ('NPC_' + this.id);
-    this.x = data.x || 0;
-    this.z = data.z || 0;
-    this.y = 0;
-    this.color = data.color || NPC_COLOR;
-    this.radius = 0.6; // radio de colisión (cuerpo del NPC)
-    this.height = 1.9;
-
-    this.nameTexture = renderer.createTextTexture(this.name);
-    this.shadowMesh = renderer.createMesh(buildUnitQuadXZ(SHADOW_COLOR));
-
-    // Figura humana (dorada) con un leve balanceo mientras espera
-    this.humanoid = new Humanoid(renderer, { body: this.color, limb: this.color });
-    this._idleTime = Math.random() * 10;
+    this._idleTime = Math.random() * 10; // desfase inicial para que no estén sincronizados
   }
 
   // Balanceo suave (idle) para dar vida al NPC mientras no se interactúa
@@ -42,28 +38,8 @@ class NPC {
     this.humanoid.update(dt, false);
   }
 
-  render(renderer, viewProj, camera) {
-    const right = camera.getRight();
-    const up = camera.getUp();
-
-    // Sombra sobre el suelo
-    const shadow = M3D.identity(new Float32Array(16));
-    M3D.translate(shadow, shadow, this.x, 0.02, this.z);
-    M3D.scale(shadow, shadow, this.radius * 1.4, 1, this.radius * 1.4);
-    renderer.drawMesh(this.shadowMesh, viewProj, shadow, 0.35);
-
-    // Figura humana orientada al mundo (los NPCs miran a una dirección fija)
-    const facingAngle = Math.sin(this._idleTime * 0.5) * 0.3;
-    this.humanoid.render(renderer, viewProj, this.x, this.y, this.z, facingAngle);
-
-    // Etiqueta con el nombre sobre la cabeza
-    const nameCenter = [this.x, this.y + this.height + 0.45, this.z];
-    const nameW = 0.5 + this.name.length * 0.32;
-    renderer.drawSprite(
-      viewProj, nameCenter,
-      [nameW, 0.85],
-      [1, 1, 1, 1],
-      this.nameTexture, right, up
-    );
+  // El NPC no mira según `facing`, sino que se balancea suavemente a la espera
+  _facingAngle() {
+    return Math.sin(this._idleTime * 0.5) * 0.3;
   }
 }

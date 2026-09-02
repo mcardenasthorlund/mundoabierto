@@ -21,6 +21,13 @@ class Game {
     this.net = opts.net || null;
     this.remotes = new Map(); // id -> RemotePlayer
 
+    // Iluminación día/noche y elementos del cielo (sol, luna y estrellas)
+    this.sky = new Sky(this.renderer);
+    const lightBtn = document.getElementById('light-toggle');
+    if (lightBtn) {
+      lightBtn.addEventListener('click', () => this._toggleDayNight());
+    }
+
     // Interacción con los NPCs
     this.npcUI = new NpcUI();
     this._nearNpc = null;      // NPC actualmente en rango de interacción
@@ -94,6 +101,7 @@ class Game {
     // Envía el estado propio al servidor (cadencias internas del NetClient)
     if (this.net) this.net.update(dt, this.player.getState());
 
+    this.renderer.updateLighting(dt);
     this.camera.update(this.player, dt);
 
     // Mientras hay un diálogo abierto el jugador queda congelado (no se mueve)
@@ -132,6 +140,14 @@ class Game {
     this.npcUI.showMessage(npc, NpcUI.randomMessage());
   }
 
+  // Alterna día/noche y actualiza el aspecto del botón
+  _toggleDayNight() {
+    const light = this.renderer.lighting;
+    light.toggle();
+    const btn = document.getElementById('light-toggle');
+    if (btn) btn.classList.toggle('light-night', !light.day);
+  }
+
   // Sincroniza la posición y el aspecto del joystick táctil
   _updateTouchUI() {
     const joy = this.input.getJoystick();
@@ -158,5 +174,7 @@ class Game {
     for (const npc of this.world.npcs) npc.render(this.renderer, vp, this.camera);
     this.player.render(this.renderer, vp, this.camera);
     for (const rp of this.remotes.values()) rp.render(this.renderer, vp, this.camera);
+    // Sol, luna y estrellas (billboards 3D) según la iluminación
+    this.sky.render(this.renderer, vp, this.camera, this.renderer.lighting.darkness, performance.now() / 1000);
   }
 }

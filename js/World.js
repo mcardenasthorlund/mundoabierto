@@ -96,39 +96,27 @@ class World {
     return true;
   }
 
-  // Empuja al jugador fuera de cualquier obstáculo que esté tocando
+  // Empuja al jugador fuera de cualquier cuerpo colisionable que esté tocando
   resolveCollisions(player) {
-    for (const obs of this.obstacles) {
-      const dx = player.x - obs.x;
-      const dz = player.z - obs.z;
-      const minDist = obs.radius + player.radius;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < minDist * minDist) {
-        if (d2 > 1e-6) {
-          const d = Math.sqrt(d2);
-          const overlap = minDist - d;
-          player.x += (dx / d) * overlap;
-          player.z += (dz / d) * overlap;
-        } else {
-          player.x += minDist;
-        }
-      }
-    }
+    for (const obs of this.obstacles) this._pushOut(player, obs.x, obs.z, obs.radius);
     // Los NPCs también son colisionables (no se pueden atravesar)
-    for (const npc of this.npcs) {
-      const dx = player.x - npc.x;
-      const dz = player.z - npc.z;
-      const minDist = npc.radius + player.radius;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < minDist * minDist) {
-        if (d2 > 1e-6) {
-          const d = Math.sqrt(d2);
-          const overlap = minDist - d;
-          player.x += (dx / d) * overlap;
-          player.z += (dz / d) * overlap;
-        } else {
-          player.x += minDist;
-        }
+    for (const npc of this.npcs) this._pushOut(player, npc.x, npc.z, npc.radius);
+  }
+
+  // Colisión círculo-círculo: empuja a "player" fuera de un círculo (cx, cz, cr)
+  _pushOut(player, cx, cz, cr) {
+    const dx = player.x - cx;
+    const dz = player.z - cz;
+    const minDist = cr + player.radius;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < minDist * minDist) {
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        const overlap = minDist - d;
+        player.x += (dx / d) * overlap;
+        player.z += (dz / d) * overlap;
+      } else {
+        player.x += minDist;
       }
     }
   }
