@@ -176,6 +176,41 @@ function buildUnitQuadXZ(color) {
   return packMesh(verts, [0, 1, 2, 0, 2, 3]);
 }
 
+// Caja (paralelepípedo) centrada en XZ, con su base (cara inferior) en baseY.
+// baseY = 0 -> caja que va de 0 a +h (torso, cabeza).
+// baseY = -h -> caja que va de -h a 0 (extremidades: pivote arriba, cuelga hacia abajo).
+function buildBox(w, h, d, color, baseY = 0) {
+  const verts = [];
+  const indices = [];
+  const b = baseY;
+  const t = baseY + h;
+  const x0 = -w / 2, x1 = w / 2, z0 = -d / 2, z1 = d / 2;
+
+  // 8 vértices (posición + color), índices de las 6 caras
+  pushVertex(verts, x0, b, z0, color);
+  pushVertex(verts, x1, b, z0, color);
+  pushVertex(verts, x1, b, z1, color);
+  pushVertex(verts, x0, b, z1, color);
+  pushVertex(verts, x0, t, z0, color);
+  pushVertex(verts, x1, t, z0, color);
+  pushVertex(verts, x1, t, z1, color);
+  pushVertex(verts, x0, t, z1, color);
+
+  // Caras: abajo, arriba, +Z, -Z, +X, -X
+  const faces = [
+    [0, 1, 2, 3],   // abajo
+    [4, 7, 6, 5],   // arriba
+    [3, 2, 6, 7],   // +Z
+    [1, 0, 4, 5],   // -Z
+    [2, 1, 5, 6],   // +X
+    [0, 3, 7, 4],   // -X
+  ];
+  for (const f of faces) {
+    indices.push(f[0], f[1], f[2], f[0], f[2], f[3]);
+  }
+  return packMesh(verts, indices);
+}
+
 // Cuadrilátero unitario para el billboard del sprite del jugador
 const SPRITE_QUAD = {
   verts: new Float32Array([

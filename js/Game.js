@@ -21,6 +21,13 @@ class Game {
     this.net = opts.net || null;
     this.remotes = new Map(); // id -> RemotePlayer
 
+    // Interacción con los NPCs
+    this.npcUI = new NpcUI();
+    this._nearNpc = null;      // NPC actualmente en rango de interacción
+    this._npcCooldown = 0;     // tiempo restante antes de volver a preguntar
+    this.npcUI.onAccept = (npc) => this._npcAccept(npc);
+    this.npcUI.onClose = () => { this._nearNpc = null; this._npcCooldown = 2; };
+
     this.touchUi = document.getElementById('touch-ui');
     this.touchJoy = document.getElementById('joystick');
     this.touchKnob = document.getElementById('joystick-knob');
@@ -88,12 +95,41 @@ class Game {
     if (this.net) this.net.update(dt, this.player.getState());
 
     this.camera.update(this.player, dt);
-    this.player.setPointerData(this.input.mouse.x, this.input.mouse.y, this._vw, this._vh);
-    this.player.update(dt, this.input, this.world, this.camera);
+
+    // Mientras hay un diálogo abierto el jugador queda congelado (no se mueve)
+    if (!this.npcUI.open) {
+      this.player.setPointerData(this.input.mouse.x, this.input.mouse.y, this._vw, this._vh);
+      this.player.update(dt, this.input, this.world, this.camera);
+      this._updateNpcInteraction();
+    }
+
+    if (this._npcCooldown > 0) this._npcCooldown -= dt;
 
     for (const rp of this.remotes.values()) rp.update(dt);
+    for (const npc of this.world.npcs) npc.update(dt);
 
     this._updateTouchUI();
+  }
+
+  // Detecta si el jugador está junto a un NPC y, en su caso, ofrece interactuar
+  _updateNpcInteraction() {
+    const npc = this.world.nearestNpc(this.player.x, this.player.z, 3);
+    if (this.npcUI.open) return;
+
+    if (npc && npc !== this._nearNpc && this._npcCooldown <= 0) {
+      this._nearNpc = npc;
+      this.npcUI.prompt(npc);
+    } else if (!npc && this._nearNpc) {
+      // El jugador se alejó del NPC y no hay diálogo abierto: se oculta el prompt
+      this._nearNpc = null;
+      this.npcUI.close();
+    }
+  }
+
+  // El jugador aceptó interactuar con un NPC: se muestra un mensaje épico
+  _npcAccept(npc) {
+    this._nearNpc = npc;
+    this.npcUI.showMessage(npc, NpcUI.randomMessage());
   }
 
   // Sincroniza la posición y el aspecto del joystick táctil
@@ -119,6 +155,7 @@ class Game {
     this.renderer.clear();
     const vp = this.camera.getViewProjection();
     this.world.render(this.renderer, vp);
+    for (const npc of this.world.npcs) npc.render(this.renderer, vp, this.camera);
     this.player.render(this.renderer, vp, this.camera);
     for (const rp of this.remotes.values()) rp.render(this.renderer, vp, this.camera);
   }

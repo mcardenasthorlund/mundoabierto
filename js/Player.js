@@ -28,9 +28,12 @@ class Player {
     this._turnTarget = null; // ángulo de mirada objetivo (ratón), en radianes
     this._mx = 0; this._my = 0; this._vw = 1; this._vh = 1;
 
-    this.spriteTexture = renderer.createCircleTexture(128, this.color);
     this.nameTexture = renderer.createTextTexture(this.name);
     this.shadowMesh = renderer.createMesh(buildUnitQuadXZ(SHADOW_COLOR));
+
+    // Figura humana (torso/piernas/brazos en el color de sesión, cabeza piel)
+    this.humanoid = new Humanoid(renderer, { body: this.color, limb: this.color });
+    this._moving = false;
   }
 
   // Estado comprimido para enviar al servidor
@@ -77,6 +80,8 @@ class Player {
     if (Math.abs(mx) < 0.15) mx = 0;
     if (Math.abs(my) < 0.15) my = 0;
     const moving = mx !== 0 || my !== 0;
+    this._moving = moving;
+    this.humanoid.update(dt, moving);
 
     const f = camera.forward;
     const r = camera.right;
@@ -151,18 +156,9 @@ class Player {
     M3D.scale(model, model, this.radius * 1.4, 1, this.radius * 1.4);
     renderer.drawMesh(this.shadowMesh, viewProj, model, 0.35);
 
-    // Sprite billboard: se desplaza ligeramente hacia la dirección de mirada
-    const offset = this.radius * 0.3;
-    const center = [this.x + this.facing[0] * offset, this.y, this.z + this.facing[2] * offset];
-    renderer.drawSprite(
-      viewProj,
-      center,
-      [this.radius * 2, this.height],
-      [1, 1, 1, 1],
-      this.spriteTexture,
-      camera.getRight(),
-      camera.getUp()
-    );
+    // Figura humana orientada según la mirada, animada al moverse
+    const facingAngle = Math.atan2(this.facing[0], this.facing[2]);
+    this.humanoid.render(renderer, viewProj, this.x, this.y, this.z, facingAngle);
 
     // Etiqueta con el nombre sobre la cabeza
     const nameCenter = [this.x, this.y + this.height + 0.45, this.z];

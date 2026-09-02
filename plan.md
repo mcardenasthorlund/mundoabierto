@@ -15,9 +15,9 @@ nombre sobre la cabeza y ven cómo se mueven.
   propios (sin gl-matrix, sin three.js).
 - **Backend multijugador:** Node.js + `ws` (WebSocket), sirve los estáticos y el
   socket en el mismo puerto. Relaya estados a ~30 Hz.
-- **Mundo compartido:** el servidor genera el layout (árboles + montañas) de
-  forma **determinista** (PRNG mulberry32 con semilla fija) y lo envía a cada
-  jugador al entrar; todos ven los mismos obstáculos.
+- **Mundo compartido:** el servidor genera el layout (árboles + montañas + NPCs)
+  de forma **determinista** (PRNG mulberry32 con semilla fija) y lo envía a cada
+  jugador al entrar; todos ven los mismos obstáculos y NPCs.
 - **Estructura:** archivos modulares (clases separadas).
 - **Scripts clásicos** (no ES modules) en orden de dependencia (sirven por HTTP;
   el multijugador ya no funciona desde `file://`).
@@ -33,6 +33,8 @@ nombre sobre la cabeza y ven cómo se mueven.
 - **Espacio / clic / toque en pantalla:** salto.
 - **Táctil (móvil):** joystick virtual flotante en la zona inferior izquierda
   para moverse; cualquier toque fuera de esa zona hace saltar.
+- **NPCs:** al acercarte a un personaje dorado aparece una ventana preguntando si
+  quieres interactuar; al aceptar, el NPC cuenta un mensaje "épico" aleatorio.
 
 ## Estructura de archivos
 
@@ -45,10 +47,10 @@ MundoAbierto/
 ├── docker-compose.yml     # Traefik, imagen ghcr.io, puerto 8080, red traefik-proxy
 ├── .dockerignore
 ├── index.html             # Canvas + pantalla de inicio (nombre) + HUD + overlay táctil
-│                          #   + chat (botón/panel) + indicador de versión
+│                          #   + chat (botón/panel) + diálogos NPC + indicador de versión
 ├── css/
 │   └── style.css          # Estilos responsive, overlay de inicio, HUD, joystick,
-│                          #   chat, indicador de versión, #error
+│                          #   chat, diálogos NPC, indicador de versión, #error
 ├── js/
 │   ├── Math3D.js          # Matrices 4x4 (col-major) y vectores
 │   ├── Shader.js          # Compilación de shaders GLSL y programas
@@ -63,14 +65,16 @@ MundoAbierto/
 │   ├── World.js           # buildFromLayout(layout) o generación aleatoria; colisiones
 │   ├── Player.js          # Movimiento, mirada, salto, sombra, nombre; getState()
 │   ├── RemotePlayer.js    # Otros jugadores: billboard + nombre, interpolados (NUEVO)
+│   ├── NPC.js             # Personaje no jugador: billboard dorado + nombre (NUEVO)
 │   ├── ChatUI.js          # Chat entre jugadores: ventana plegable, badge no leídos
 │   │                      #   y parpadeo del botón (NUEVO)
-│   ├── Game.js            # Bucle (paso fijo 1/60), resize, red, remotes, joystick
+│   ├── NpcUI.js           # Diálogos de NPC: pregunta (Sí/No) + mensaje épico (NUEVO)
+│   ├── Game.js            # Bucle (paso fijo 1/60), resize, red, remotes, joystick, NPCs
 │   └── main.js            # Pantalla de inicio, conexión, arranque del juego, ChatUI
 └── server/
     ├── package.json       # Dep única: ws; script start
     ├── server.js          # HTTP estático + WebSocket + sesiones + layout + chat
-    └── worldLayout.js     # generateLayout(half, seed): layout determinista
+    └── worldLayout.js     # generateLayout(half, seed): layout determinista (obstáculos + NPCs)
 ```
 
 ## Lo realizado (completado)
@@ -120,6 +124,22 @@ MundoAbierto/
       el objetivo (`_turnTarget`) por el camino más corto, evitando que la cámara
       dé vueltas rápido cuando el ratón baja hasta la línea del jugador.
 - [x] **Indicador de versión** `v0.2-alpha` en la esquina inferior derecha.
+- [x] **NPCs interactuables (8 por mundo, layout determinista compartido):**
+      - El servidor genera 8 NPCs (`NPC_1`…`NPC_8`) con posiciones deterministas,
+        sin solapar obstáculos ni el centro; se envían en `layout.npcs`.
+      - `NPC.js`: billboard circular **dorado** (distingue de los jugadores),
+        sombra, etiqueta de nombre y radio de colisión (son **colisionables**).
+      - Al acercarse a un NPC (radio ~3 u) `Game` muestra una **ventana de
+        pregunta** ("¿Quieres interactuar con NPC_x?") con Sí/No.
+      - Al aceptar, `NpcUI` muestra una **ventana de mensaje** con una frase
+        "épica" **aleatoria** de un array (`EPIC_MESSAGES`); el botón Cerrar la
+        cierra (bug corregido: `_deny()` ahora cierra el diálogo además de
+        notificar `onClose`).
+      - Mientras hay un diálogo abierto el **jugador queda congelado** (no se
+        mueve ni salta), pero la cámara y los remotos siguen activos.
+      - Cooldown (~2 s) tras cerrar para no re-preguntar al instante.
+      - Los botones de los diálogos se ignoran como input de juego (ya los cubre
+        `InputManager._isUI` con `button`/`input`), por lo que no hacen saltar.
 
 ## Detalles técnicos clave (para retomar rápido)
 
@@ -153,8 +173,14 @@ MundoAbierto/
 - **NetClient:** envía el estado propio en `update(dt, state)` con cadencia
   interna 1/30 s. `welcome` activa el juego (crea `Game` con `layout` + `players`).
 - **Mundo:** `World` se construye con `{layout}`; sin layout usa `_spawn` aleatorio
-  (fallback local).
-- **Colisiones:** solo XZ. `World.resolveCollisions` empuja fuera de cada obstáculo.
+  (fallback local). `layout` es `{half, obstacles, npcs}`; los NPCs se construyen
+  en `World.buildFromLayout` y se exponen en `World.npcs`.
+- **Colisiones:** solo XZ. `World.resolveCollisions` empuja fuera de cada obstáculo
+  y de cada NPC (todos colisionables).
+- **NPCs:** `World.nearestNpc(x, z, range)` devuelve el NPC más cercano dentro de
+  `range` o `null`. `Game._updateNpcInteraction` lo usa para ofrecer interactuar;
+  `Game` congela `player.update` mientras `npcUI.open` es true. `NpcUI.randomMessage()`
+  devuelve un mensaje épico aleatorio.
 - **Física:** bucle de paso fijo `1/60` con acumulador en `Game._tick`.
 - **Orden de `_update`:** 1) `camera.update(player, dt)`, 2) `player.update(...)`,
   3) `net.update(dt, player.getState())`, 4) `rp.update(dt)` de los remotos.
@@ -177,7 +203,9 @@ chat (botón abajo a la derecha): enviar mensajes entre pestañas, ver el badge 
 leídos y el parpadeo con el chat cerrado, y confirmar que escribir no mueve al
 personaje. En móvil, verificar que tocar el botón abre el chat sin que salte el
 personaje. Comprobar que el giro de la cámara con el ratón es suave incluso al
-bajar el cursor hasta la línea del jugador.
+bajar el cursor hasta la línea del jugador. Acércate a un NPC dorado para ver la
+ventana de pregunta, acepta para leer un mensaje épico y comprueba que el
+jugador queda congelado durante el diálogo y que Cerrar/No cierran la ventana.
 
 ### En el servidor (Docker + Traefik)
 1. `docker build -t ghcr.io/mcardenasthorlund/mundoabierto:latest .`
@@ -194,4 +222,5 @@ bajar el cursor hasta la línea del jugador.
 - Migrar de polling/broadcast simple a interpolación/extrapolación o WebRTC.
 - Auth/unicidad de nombres, salas múltiples, historial persistente de chat (los que
   entran después ven los mensajes previos), minimapa o mundo infinito.
-- Estados del jugador (animaciones, correr), enemigos o NPCs.
+- Estados del jugador (animaciones, correr), enemigos o NPCs con IA (los NPCs
+  actuales son estáticos e interactúan solo con diálogos).

@@ -19,14 +19,17 @@ npm start
 
 Abrir varias pestañas en `http://localhost:8080`, poner un nombre y entrar.
 Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores,
-chatear entre vosotros y ver el indicador de versión (v0.2-alpha) en la esquina
-inferior derecha.
+chatear entre vosotros, interactuar con los NPCs y ver el indicador de versión
+(v0.2-alpha) en la esquina inferior derecha.
 
 ## Controles
 
 - **Flechas / joystick táctil:** moverse.
 - **Ratón:** dirección de mirada (giro suave de la cámara).
 - **Espacio / clic / toque:** saltar.
+- **NPCs:** acércate a un personaje dorado (`NPC_1`…`NPC_8`) para que aparezca una
+  ventana preguntando si quieres interactuar; al aceptar, el NPC cuenta un mensaje
+  "épico" aleatorio. Mientras el diálogo está abierto el jugador queda congelado.
 - **Chat:** botón (icono de burbuja) en la esquina inferior derecha, encima del
   indicador de versión, abre/cierra la ventana; escribe y pulsa Enviar/Enter. Al
   llegar un mensaje con el chat cerrado aparece un badge con el número de no leídos
@@ -62,16 +65,18 @@ inferior derecha.
 │   ├── Obstacle.js     # Base de obstáculo colisionable
 │   ├── Tree.js         # Árbol (tronco + copa)
 │   ├── Mountain.js     # Montaña cónica + nieve
-│   ├── World.js        # Terreno + obstáculos (desde layout o aleatorio)
+│   ├── World.js        # Terreno + obstáculos + NPCs (desde layout o aleatorio)
 │   ├── Player.js       # Jugador local (movimiento, salto, sombra)
 │   ├── RemotePlayer.js # Otros jugadores (interpolados + nombre)
+│   ├── NPC.js          # Personaje no jugador (dorado, colisionable)
 │   ├── ChatUI.js       # Chat entre jugadores (ventana, badge de no leídos)
-│   ├── Game.js         # Bucle de juego e integración de red
+│   ├── NpcUI.js        # Diálogos de NPC (pregunta Sí/No + mensaje épico)
+│   ├── Game.js         # Bucle de juego, red e interacción con NPCs
 │   └── main.js         # Pantalla de inicio y arranque
 └── server/             # Servidor Node + WebSocket
     ├── package.json
     ├── server.js       # HTTP estático + WebSocket + sesiones
-    └── worldLayout.js  # Layout del mundo (determinista)
+    └── worldLayout.js  # Layout del mundo (obstáculos + NPCs, determinista)
 ```
 
 ## Protocolo
@@ -79,4 +84,5 @@ inferior derecha.
 - **Cliente → Servidor:** `{type:'join', name}` · `{type:'state', x,y,z,facing,vy,onGround}` (~30 Hz) · `{type:'chat', text}`.
 - **Servidor → Cliente:** `{type:'welcome', id, color, layout, players}` · `{type:'state', id, …}` · `{type:'leave', id}` · `{type:'full'}` · `{type:'chat', id, name, color, text, ts}`.
 
+El layout incluye `obstacles` (árboles/montañas) y `npcs` (personajes interactuables).
 Límite de sesiones simultáneas: `MAX_PLAYERS` (por defecto 4).

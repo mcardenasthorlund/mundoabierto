@@ -17,6 +17,7 @@ class World {
     opts = opts || {};
     this.half = opts.half || 120;
     this.obstacles = [];
+    this.npcs = [];
     this.ground = renderer.createMesh(buildGroundGrid(this.half, 8, [0.42, 0.64, 0.36]));
     this._identity = M3D.identity(new Float32Array(16));
 
@@ -40,6 +41,19 @@ class World {
       if (obstacle) {
         obstacle.build(renderer);
         this.obstacles.push(obstacle);
+      }
+    }
+
+    // NPCs compartidos: mismo layout para todos los jugadores
+    if (Array.isArray(layout.npcs)) {
+      for (const item of layout.npcs) {
+        const npc = new NPC(renderer, {
+          id: item.id,
+          x: item.x,
+          z: item.z,
+          name: 'NPC_' + item.id,
+        });
+        this.npcs.push(npc);
       }
     }
   }
@@ -100,6 +114,37 @@ class World {
         }
       }
     }
+    // Los NPCs también son colisionables (no se pueden atravesar)
+    for (const npc of this.npcs) {
+      const dx = player.x - npc.x;
+      const dz = player.z - npc.z;
+      const minDist = npc.radius + player.radius;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < minDist * minDist) {
+        if (d2 > 1e-6) {
+          const d = Math.sqrt(d2);
+          const overlap = minDist - d;
+          player.x += (dx / d) * overlap;
+          player.z += (dz / d) * overlap;
+        } else {
+          player.x += minDist;
+        }
+      }
+    }
+  }
+
+  // Devuelve el NPC más cercano al punto dado si está dentro de "range"; si no, null
+  nearestNpc(x, z, range) {
+    let best = null;
+    let bestD = range * range;
+    for (const npc of this.npcs) {
+      const d = (x - npc.x) * (x - npc.x) + (z - npc.z) * (z - npc.z);
+      if (d < bestD) {
+        bestD = d;
+        best = npc;
+      }
+    }
+    return best;
   }
 
   render(renderer, viewProj) {

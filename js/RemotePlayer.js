@@ -26,9 +26,12 @@ class RemotePlayer {
     this.radius = 0.5;
     this.height = 1.9;
 
-    this.spriteTexture = renderer.createCircleTexture(128, this.color);
     this.nameTexture = renderer.createTextTexture(this.name);
     this.shadowMesh = renderer.createMesh(buildUnitQuadXZ(SHADOW_COLOR));
+
+    // Figura humana (color de sesión, cabeza piel) con animación de caminado
+    this.humanoid = new Humanoid(renderer, { body: this.color, limb: this.color });
+    this._moving = false;
   }
 
   // Aplica un estado recibido del servidor
@@ -49,6 +52,14 @@ class RemotePlayer {
     this.z += (this.tz - this.z) * k;
     this.facing[0] += (this.tfacing[0] - this.facing[0]) * k;
     this.facing[1] += (this.tfacing[1] - this.facing[1]) * k;
+
+    // Detecta el movimiento por la distancia recorrida en esta interpolación
+    const dist = Math.hypot(this.x - this._px, this.z - this._pz);
+    this._px = this.x;
+    this._pz = this.z;
+    const moving = dist > 0.001;
+    this._moving = moving;
+    this.humanoid.update(dt, moving);
   }
 
   render(renderer, viewProj, camera) {
@@ -61,14 +72,9 @@ class RemotePlayer {
     const right = camera.getRight();
     const up = camera.getUp();
 
-    // Sprite billboard del personaje
-    const center = [this.x, this.y, this.z];
-    renderer.drawSprite(
-      viewProj, center,
-      [this.radius * 2, this.height],
-      [1, 1, 1, 1],
-      this.spriteTexture, right, up
-    );
+    // Figura humana orientada según la mirada, animada al moverse
+    const facingAngle = Math.atan2(this.facing[0], this.facing[1]);
+    this.humanoid.render(renderer, viewProj, this.x, this.y, this.z, facingAngle);
 
     // Etiqueta con el nombre sobre la cabeza
     const nameCenter = [this.x, this.y + this.height + 0.45, this.z];

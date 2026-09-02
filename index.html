@@ -52,6 +52,26 @@
     </div>
   </div>
 
+  <!-- Interacción con NPCs: ventana de pregunta y ventana de mensaje -->
+  <div id="npc-prompt" class="npc-dialog">
+    <div class="npc-panel">
+      <p id="npc-prompt-text"></p>
+      <div class="npc-actions">
+        <button id="npc-prompt-yes" type="button">S&iacute;</button>
+        <button id="npc-prompt-no" type="button">No</button>
+      </div>
+    </div>
+  </div>
+  <div id="npc-message" class="npc-dialog">
+    <div class="npc-panel">
+      <h2 id="npc-message-title"></h2>
+      <p id="npc-message-text"></p>
+      <div class="npc-actions">
+        <button id="npc-message-close" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Versión del juego -->
   <div id="version">v0.2-alpha</div>
 
@@ -68,9 +88,12 @@
   <script src="js/Tree.js"></script>
   <script src="js/Mountain.js"></script>
   <script src="js/World.js"></script>
+  <script src="js/Humanoid.js"></script>
   <script src="js/Player.js"></script>
   <script src="js/RemotePlayer.js"></script>
+  <script src="js/NPC.js"></script>
   <script src="js/ChatUI.js"></script>
+  <script src="js/NpcUI.js"></script>
   <script src="js/Game.js"></script>
   <script src="js/main.js"></script>
 </body>

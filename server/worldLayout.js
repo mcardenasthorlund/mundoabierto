@@ -23,13 +23,14 @@ function mulberry32(seed) {
  * Genera el layout del mundo.
  * @param {number} half Mitad del tamaño del mundo (lado = half*2).
  * @param {number} seed Semilla para la generación determinista.
- * @returns {{half:number, obstacles:Array<{type:string,x:number,z:number,radius:number}>}}
+ * @returns {{half:number, obstacles:Array<{type:string,x:number,z:number,radius:number}>, npcs:Array<{id:number,x:number,z:number}>}}
  */
 function generateLayout(half, seed) {
   half = half || 120;
   seed = seed || 1337;
   const rand = mulberry32(seed);
   const obstacles = [];
+  const npcs = [];
 
   // Comprueba que una posición no solape con el centro ni con otros obstáculos
   const isFree = (x, z, radius, minDistToCenter) => {
@@ -57,7 +58,24 @@ function generateLayout(half, seed) {
   for (let i = 0; i < 45; i++) place('tree', 0.8, 3);
   for (let i = 0; i < 8; i++) place('mountain', 6 + rand() * 4, 8);
 
-  return { half, obstacles };
+  // Coloca un NPC en una posición libre (sin solapar obstáculos ni el centro)
+  const placeNpc = (id) => {
+    const radius = 0.8; // margen de separación respecto a obstáculos
+    let attempts = 0;
+    let x = 0, z = 0;
+    do {
+      x = (rand() * 2 - 1) * (half - 6);
+      z = (rand() * 2 - 1) * (half - 6);
+      attempts++;
+      if (attempts > 300) break;
+    } while (!isFree(x, z, radius, 10));
+    npcs.push({ id, x, z });
+  };
+
+  const NPC_COUNT = 8;
+  for (let i = 1; i <= NPC_COUNT; i++) placeNpc(i);
+
+  return { half, obstacles, npcs };
 }
 
 module.exports = { generateLayout, mulberry32 };
