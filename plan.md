@@ -101,8 +101,9 @@ MundoAbierto/
 - [x] Verificaciones: `node --check` de todos los JS y test del protocolo
       (joins, broadcast, layout idéntico, "full", leave).
 - [x] **Chat entre jugadores activos (en vivo, sin historial):**
-      - Botón + ventana de chat en la esquina **superior centrada** (panel justo
-        debajo del botón); lista de mensajes con nombre coloreado y campo de escritura.
+      - Botón con icono SVG de burbuja en la esquina **inferior derecha**, justo
+        encima del indicador de versión; panel anclado sobre el botón; lista de
+        mensajes con nombre coloreado y campo de escritura.
       - Broadcast del servidor a todos con `{type:'chat', id, name, color, text, ts}`;
         cada cliente muestra su propio mensaje por coincidencia de `id`.
       - Badge con contador de **no leídos** + parpadeo breve del botón cuando llega
@@ -110,7 +111,15 @@ MundoAbierto/
       - Validación en servidor: texto recortado, máx. 200 caracteres, vacíos descartados.
       - Escribir en el chat **no mueve al personaje** (InputManager ignora el teclado
         cuando hay un `INPUT`/`TEXTAREA` con foco).
-- [x] **Indicador de versión** `v0.1-alpha` en la esquina inferior derecha.
+      - **Móvil:** los toques/clics sobre controles de la UI (botón, panel, inputs)
+        no se tratan como entrada del juego (`_isUI` en InputManager), de modo que
+        tocar el botón abre el chat en vez de saltar (el `preventDefault` del
+        `touchstart` global bloqueaba el `click` del botón).
+- [x] **Cámara suave con el ratón:** la mirada ya no apunta directamente al punto
+      del suelo bajo el cursor; `Player._smoothTurn(dt)` interpola el ángulo hacia
+      el objetivo (`_turnTarget`) por el camino más corto, evitando que la cámara
+      dé vueltas rápido cuando el ratón baja hasta la línea del jugador.
+- [x] **Indicador de versión** `v0.2-alpha` en la esquina inferior derecha.
 
 ## Detalles técnicos clave (para retomar rápido)
 
@@ -134,6 +143,13 @@ MundoAbierto/
 - **ChatUI:** clase de UI pura desacoplada del bucle; se instancia en `main.js`
   (`new ChatUI(net)`). `InputManager._onKeyDown/_onKeyUp` ignoran el input de juego
   cuando `document.activeElement` es un `INPUT`/`TEXTAREA` (evita mover/saltar al escribir).
+- **InputManager._isUI(target):** comprueba `target.closest('#chat-toggle, #chat-panel,
+  #chat-input, #chat-send, input, textarea, button')`. Si un `touchstart`/`click` empieza
+  en la UI se ignora como entrada de juego (no `preventDefault` → el botón sigue
+  recibiendo su `click`; no salta).
+- **Mirada suave:** `Player._turnTarget` guarda el ángulo objetivo del ratón
+  (`atan2(dx, dz)`); `_smoothTurn` normaliza la diferencia angular a `[-PI, PI]` y
+  rota `facing` con `k = 1 - exp(-dt*12)` (interpolación exponencial).
 - **NetClient:** envía el estado propio en `update(dt, state)` con cadencia
   interna 1/30 s. `welcome` activa el juego (crea `Game` con `layout` + `players`).
 - **Mundo:** `World` se construye con `{layout}`; sin layout usa `_spawn` aleatorio
@@ -157,8 +173,11 @@ cd server && npm install && npm start
 Abrir `http://localhost:8080` en varias pestañas/ventanas: entrar con nombre,
 comprobar movimiento, salto, colisiones, cámara, que los jugadores se ven
 mutuamente con nombre y que una 5ª conexión recibe "servidor lleno". Probar el
-chat (botón arriba centrado): enviar mensajes entre pestañas, ver el badge de no
-leídos y el parpadeo con el chat cerrado, y confirmar que escribir no mueve al personaje.
+chat (botón abajo a la derecha): enviar mensajes entre pestañas, ver el badge de no
+leídos y el parpadeo con el chat cerrado, y confirmar que escribir no mueve al
+personaje. En móvil, verificar que tocar el botón abre el chat sin que salte el
+personaje. Comprobar que el giro de la cámara con el ratón es suave incluso al
+bajar el cursor hasta la línea del jugador.
 
 ### En el servidor (Docker + Traefik)
 1. `docker build -t ghcr.io/mcardenasthorlund/mundoabierto:latest .`

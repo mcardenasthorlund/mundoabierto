@@ -19,17 +19,18 @@ npm start
 
 Abrir varias pestañas en `http://localhost:8080`, poner un nombre y entrar.
 Puedes conectarte con varias pestañas para ver el movimiento de otros jugadores,
-chatear entre vosotros y ver el indicador de versión (v0.1-alpha) en la esquina
+chatear entre vosotros y ver el indicador de versión (v0.2-alpha) en la esquina
 inferior derecha.
 
 ## Controles
 
 - **Flechas / joystick táctil:** moverse.
-- **Ratón:** dirección de mirada.
+- **Ratón:** dirección de mirada (giro suave de la cámara).
 - **Espacio / clic / toque:** saltar.
-- **Chat:** botón en la esquina superior centrada abre/cierra la ventana; escribe
-  y pulsa Enviar/Enter. Al llegar un mensaje con el chat cerrado aparece un badge
-  con el número de no leídos y el botón parpadea brevemente.
+- **Chat:** botón (icono de burbuja) en la esquina inferior derecha, encima del
+  indicador de versión, abre/cierra la ventana; escribe y pulsa Enviar/Enter. Al
+  llegar un mensaje con el chat cerrado aparece un badge con el número de no leídos
+  y el botón parpadea brevemente. En móvil, tocar el botón abre el chat sin saltar.
 
 ## Desplegar con Docker (Traefik)
 
@@ -55,7 +56,7 @@ inferior derecha.
 │   ├── Math3D.js       # Matrices/vectores
 │   ├── Shader.js       # Compilación de shaders
 │   ├── Renderer.js     # Contexto WebGL, mallas, billboards, texturas
-│   ├── InputManager.js # Teclado + ratón + táctil
+│   ├── InputManager.js # Teclado + ratón + táctil (ignora la UI del chat)
 │   ├── Camera.js       # Cámara tras el jugador + raycast al suelo
 │   ├── NetClient.js    # Conexión WebSocket (envía/recibe estados)
 │   ├── Obstacle.js     # Base de obstáculo colisionable

@@ -25,6 +25,7 @@ class Player {
     this.name = opts.name || 'Yo';
     this.color = opts.color || PLAYER_COLOR;
     this.facing = [0, 0, -1];
+    this._turnTarget = null; // ángulo de mirada objetivo (ratón), en radianes
     this._mx = 0; this._my = 0; this._vw = 1; this._vh = 1;
 
     this.spriteTexture = renderer.createCircleTexture(128, this.color);
@@ -83,7 +84,9 @@ class Player {
     // --- Dirección de mirada ---
     const mouseFresh = performance.now() - input.mouse.lastMoveTime < 150;
     if (mouseFresh) {
-      // Con ratón: el personaje sigue la posición del cursor
+      // Con ratón: el personaje sigue la posición del cursor.
+      // Se guarda el ángulo objetivo y se interpola el giro para que sea suave,
+      // evitando que la cámara dé vueltas rápido cuando el ratón se acerca al jugador.
       const ndcX = (this._mx / this._vw) * 2 - 1;
       const ndcY = 1 - (this._my / this._vh) * 2;
       const hit = [0, 0, 0];
@@ -91,11 +94,9 @@ class Player {
         const dx = hit[0] - this.x;
         const dz = hit[2] - this.z;
         const len = Math.hypot(dx, dz);
-        if (len > 0.5) {
-          this.facing[0] = dx / len;
-          this.facing[2] = dz / len;
-        }
+        if (len > 0.5) this._turnTarget = Math.atan2(dx, dz);
       }
+      this._smoothTurn(dt);
     } else if (moving) {
       // Sin ratón (táctil): mira hacia la dirección del movimiento
       const fdx = r[0] * mx + f[0] * my;
@@ -125,6 +126,22 @@ class Player {
     const lim = world.half - 1;
     this.x = Math.max(-lim, Math.min(lim, this.x));
     this.z = Math.max(-lim, Math.min(lim, this.z));
+  }
+
+  // Rota la mirada de forma suave hacia el ángulo objetivo (más corto posible).
+  // Al interpolar solo una fracción del giro restante, los cambios bruscos de
+  // dirección (p. ej. ratón cerca del jugador) se convierten en giros controlados.
+  _smoothTurn(dt) {
+    if (this._turnTarget === null) return;
+    let ang = Math.atan2(this.facing[0], this.facing[2]);
+    let diff = this._turnTarget - ang;
+    // Normaliza la diferencia al rango [-PI, PI] para girar por el camino corto
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    const k = 1 - Math.exp(-dt * 12);
+    ang += diff * k;
+    this.facing[0] = Math.sin(ang);
+    this.facing[2] = Math.cos(ang);
   }
 
   render(renderer, viewProj, camera) {

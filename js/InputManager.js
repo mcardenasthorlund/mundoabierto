@@ -29,8 +29,10 @@ class InputManager {
     });
     window.addEventListener('blur', () => this.keys.clear());
 
-    // Un clic salta (no se cuenta si proviene de un toque ya procesado)
-    window.addEventListener('click', () => {
+    // Un clic salta (no se cuenta si proviene de un toque ya procesado,
+    // ni si se pulsó sobre un control de la interfaz, p. ej. el chat)
+    window.addEventListener('click', (e) => {
+      if (this._isUI(e.target)) return;
       if (performance.now() - this._lastTouchJump > 400) this._jumpQueued = true;
     });
 
@@ -66,12 +68,22 @@ class InputManager {
     this.keys.delete(e.code);
   }
 
+  // ¿El toque/clic empezó sobre un control de la interfaz (chat, inputs…)?
+  // Si es así no debe contar como entrada de juego (ni saltar ni bloquear el click).
+  _isUI(target) {
+    if (!target || typeof target.closest !== 'function') return false;
+    return !!target.closest('#chat-toggle, #chat-panel, #chat-input, #chat-send, input, textarea, button');
+  }
+
   // El toque en la zona inferior izquierda activa el joystick
   _isJoystickZone(x, y) {
     return x < window.innerWidth * 0.5 && y > window.innerHeight * 0.55;
   }
 
   _onTouchStart(e) {
+    // Si el toque empieza sobre un control de la UI, no lo tratamos como entrada
+    // del juego: sin preventDefault (deja que se dispare el click del botón) y sin salto.
+    if (this._isUI(e.target)) return;
     e.preventDefault();
     this.touchSeen = true;
     for (let i = 0; i < e.changedTouches.length; i++) {

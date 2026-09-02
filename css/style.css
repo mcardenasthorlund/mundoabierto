@@ -215,9 +215,8 @@ html, body {
 /* --- Chat entre jugadores (esquina inferior derecha) --- */
 #chat-toggle {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
+  bottom: 44px; /* encima del indicador de versión */
   z-index: 40;
   width: 54px;
   height: 54px;
@@ -225,13 +224,17 @@ html, body {
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
-  font-size: 24px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   user-select: none;
+}
+
+#chat-icon {
+  display: block;
+  pointer-events: none;
 }
 
 #chat-toggle:hover {
@@ -275,9 +278,8 @@ html, body {
 #chat-panel {
   display: none;
   position: fixed;
-  top: 78px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
+  bottom: 110px;
   z-index: 41;
   width: min(320px, 92vw);
   height: 320px;
@@ -376,9 +378,9 @@ html, body {
 /* En pantallas táctiles el chat queda por encima del joystick */
 @media (max-width: 640px) {
   #chat-panel {
-    top: 74px;
     right: 10px;
     left: 10px;
+    bottom: 108px;
     width: auto;
     height: 40vh;
   }
